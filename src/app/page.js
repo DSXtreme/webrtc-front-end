@@ -99,12 +99,7 @@ export default function Home() {
         (async () => {
             // getting the stream form local machine
             try {
-                const cameraPermission = await navigator.permissions.query({
-                    name: "camera",
-                });
-                const micPermission = await navigator.permissions.query({
-                    name: "microphone",
-                });
+               
 
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: true,
@@ -112,34 +107,34 @@ export default function Home() {
                 });
 
                 videoRef.current.srcObject = stream;
-            } catch (e) {
-                console.log("error at getting media: ", e);
-            }
 
-  
+                //calling user who have joined and passing the stream
+                io.on("user-joined", ({ peerId }) => {
+                    console.log("localPeer", localPeer);
 
-            //calling user who have joined and passing the stream
-            io.on("user-joined", ({ peerId }) => {
-                console.log("localPeer", localPeer);
+                    if (localPeer) {
+                        const call = localPeer.call(peerId, stream);
 
+                        // While getting remote user stream assign to remote video
+                        call.on("stream", (peerStream) => {
+                            console.log("call peer call: ", { peerStream });
+                            remoteVideoRef.current.srcObject = stream;
+                        });
+                    }
+                });
+
+                // answer the call
                 if (localPeer) {
-                    const call = localPeer.call(peerId, stream);
-               
-                    call.on("stream", (peerStream) => {
-                        console.log("call peer call: ", { peerStream });
-                        remoteVideoRef.current.srcObject = stream;
+                    localPeer.on("call", (call) => {
+                        call.answer(stream);
+                        call.on("stream", (peerStream) => {
+                            console.log("answer peer strema: ", { peerStream });
+                            remoteVideoRef.current.srcObject = stream;
+                        });
                     });
                 }
-            });
-
-            if (localPeer) {
-                localPeer.on("call", (call) => {
-                    call.answer(stream);
-                    call.on("stream", (peerStream) => {
-                        console.log("answer peer strema: ", { peerStream });
-                        remoteVideoRef.current.srcObject = stream;
-                    });
-                });
+            } catch (e) {
+                console.log("error at getting media: ", e);
             }
         })();
     }, [localPeer]);
