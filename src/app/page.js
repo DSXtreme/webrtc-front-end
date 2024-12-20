@@ -125,6 +125,7 @@ export default function Home() {
                 if (localPeer) {
                     const call = localPeer.call(peerId, stream);
                
+                    // While getting remote user stream assign to remote video
                     call.on("stream", (peerStream) => {
                         console.log("call peer call: ", { peerStream });
                         remoteVideoRef.current.srcObject = stream;
@@ -132,6 +133,7 @@ export default function Home() {
                 }
             });
 
+            // answer the call
             if (localPeer) {
                 localPeer.on("call", (call) => {
                     call.answer(stream);
