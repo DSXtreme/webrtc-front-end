@@ -4,7 +4,7 @@ import socketIoClient from "socket.io-client";
 
 export const RoomContext = createContext(null);
 
-const io = socketIoClient("http://localhost:3001");
+const io = socketIoClient("https://webrtc-backend-mdce.onrender.com");
 
 const RoomProvider = ({ children }) => {
 
