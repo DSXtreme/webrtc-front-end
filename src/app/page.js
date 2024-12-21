@@ -118,7 +118,7 @@ export default function Home() {
                         // While getting remote user stream assign to remote video
                         call.on("stream", (peerStream) => {
                             console.log("call peer call: ", { peerStream });
-                            remoteVideoRef.current.srcObject = stream;
+                            remoteVideoRef.current.srcObject = peerStream;
                         });
                     }
                 });
@@ -129,7 +129,7 @@ export default function Home() {
                         call.answer(stream);
                         call.on("stream", (peerStream) => {
                             console.log("answer peer strema: ", { peerStream });
-                            remoteVideoRef.current.srcObject = stream;
+                            remoteVideoRef.current.srcObject = peerStream;
                         });
                     });
                 }
