@@ -9,22 +9,19 @@ import {
 import { RoomContext } from "./context/roomContext";
 import Peer from "peerjs";
 import { v4 as uuid4 } from "uuid";
+import VideoPlayer from "./components/VideoPlayer";
 
 export default function Home() {
-    const videoRef = useRef(null);
-    const remoteVideoRef = useRef(null);
-
     const { io } = useContext(RoomContext);
 
     const [roomId, setRoomId] = useState(null);
     const [localPeer, setLocalPeer] = useState(null);
     const [inputRoomId, setInputRoomId] = useState(null);
-
-    // setting remote peer and its stream
-    /**
-     *
+    /*
+     *  remoteMembers: {peerId: stream}
      */
-    const [remotePeerInfo, setRemotePeerInfo] = useState(null);
+    const [remoteMembers, setRemoteMembers] = useState({});
+    const [localStream, setLocalStream] = useState(null);
 
     // handeling join room
     const handelJoin = ({ roomId }) => {
@@ -32,6 +29,7 @@ export default function Home() {
 
         if (localPeer) {
             console.log("this is peer id form me: ", localPeer._id);
+
             try {
                 inputRoomId
                     ? io.emit("join-room", {
@@ -47,6 +45,7 @@ export default function Home() {
 
     // Request to create a room
     const hadelCreateRoom = () => {
+        console.log("req to create room");
         io.emit("create-room");
     };
 
@@ -55,6 +54,8 @@ export default function Home() {
         console.log("room id manual: ", value);
         setInputRoomId(value);
     };
+
+    useEffect(() => {}, []);
 
     /**
      * Listening to
@@ -71,10 +72,7 @@ export default function Home() {
             setRoomId(data.roomId);
         });
 
-        // gettin new user info
-        io.on("get-user", (user) => {
-            console.log("New user: ", user);
-        });
+    
 
         // For any error at socket
         io.on("error", (error) => {
@@ -93,53 +91,106 @@ export default function Home() {
 
     /**
      *  Handeling audio and video stream
+     *  handeling new user joined in the room
      *  Sending the stream to other users in the room
      */
     useEffect(() => {
         (async () => {
             // getting the stream form local machine
             try {
-               
-
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: true,
                     video: true,
                 });
 
-                videoRef.current.srcObject = stream;
+                setLocalStream(stream);
+                // videoRef.current.srcObject = stream;
 
                 //calling user who have joined and passing the stream
-                io.on("user-joined", ({ peerId }) => {
-                    console.log("localPeer", localPeer);
+                // io.on("user-joined", ({ peerId }) => {
+                //     console.log("localPeer", localPeer);
 
-                    if (localPeer) {
-                        const call = localPeer.call(peerId, stream);
+                //     if (localPeer) {
+                //         const call = localPeer.call(peerId, stream);
 
-                        // While getting remote user stream assign to remote video
-                        call.on("stream", (peerStream) => {
-                            console.log("call peer call: ", { peerStream });
-                            remoteVideoRef.current.srcObject = peerStream;
-                        });
-                    }
-                });
+                //         // While getting remote user stream assign to remote video
+                //         call.on("stream", (peerStream) => {
+                //             console.log("call peer call: ", { peerStream });
+                //             remoteVideoRef.current.srcObject = peerStream;
+                //         });
+                //     }
+                // });
 
-                // answer the call
-                if (localPeer) {
-                    localPeer.on("call", (call) => {
-                        call.answer(stream);
-                        call.on("stream", (peerStream) => {
-                            console.log("answer peer strema: ", { peerStream });
-                            remoteVideoRef.current.srcObject = peerStream;
-                        });
-                    });
-                }
+                // // answer the call
+                // if (localPeer) {
+                //     localPeer.on("call", (call) => {
+                //         call.answer(stream);
+                //         call.on("stream", (peerStream) => {
+                //             console.log("answer peer strema: ", { peerStream });
+                //             remoteVideoRef.current.srcObject = peerStream;
+                //         });
+                //     });
+                // }
             } catch (e) {
                 console.log("error at getting media: ", e);
             }
         })();
     }, [localPeer]);
 
+    // handeling calls
+    useEffect(() => {
+        console.log("localStream useEffect: ", localStream);
+        //calling user who have joined and passing the stream
+        if (localStream) {
+            try {
+                io.on("user-joined", ({ peerId }) => {
+                    console.log("remote join user", peerId);
+
+                    if (localPeer) {
+                        console.log(
+                            "localStream inside socket user-joined",
+                            localStream
+                        );
+                        console.log("peerId user-joined", peerId);
+                        const call = localPeer.call(peerId, localStream);
+
+                        // While getting remote user stream assign to remote video
+                        call.on("stream", (peerStream) => {
+                            console.log("call peer call: ", { peerStream });
+                            setRemoteMembers(prevState => ({
+                                ...prevState,
+                                [peerId]: peerStream,
+                            }));
+                            // remoteVideoRef.current.srcObject = peerStream;
+                        });
+                    }
+                });
+            } catch (e) {
+                console.log(e);
+            }
+        }
+
+        if (localPeer) {
+            try {
+                localPeer.on("call", (call) => {
+                    console.log("call form remote: ", call);
+                    call.answer(localStream);
+                    call.on("stream", (peerStream) => {
+                        console.log("peer stream: ", peerStream);
+                        setRemoteMembers(prevState => ({
+                            ...prevState,
+                            [call.peer]: peerStream,
+                        }));
+                    });
+                });
+            } catch (e) {
+                console.log("error at answering: ", e);
+            }
+        }
+    }, [localPeer, localStream]);
+
     return (
+        console.log("remoteMembers", remoteMembers),
         <>
             <div>roomID {roomId}</div>
             <input
@@ -162,9 +213,16 @@ export default function Home() {
             </button>
 
             {/* Video interface */}
+            {localStream && <VideoPlayer stream={localStream} muted />}
 
-            <video ref={videoRef} width={300} autoPlay muted />
-            <video ref={remoteVideoRef} width={300} autoPlay />
+            {Object.keys(remoteMembers).map((peerId, index) => {
+                return (
+                    <VideoPlayer
+                        key={index}
+                        stream={remoteMembers[peerId]}
+                    />
+                );
+            })}
         </>
     );
 }
