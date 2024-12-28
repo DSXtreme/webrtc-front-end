@@ -1,6 +1,7 @@
 "use client"
 import React, { useState } from 'react';
-import firebase from 'firebase/app';
+// import firebase from 'firebase/app';
+
 import { useRouter } from 'next/navigation';
 
 
@@ -15,7 +16,7 @@ const LoginPage = () => {
   const handleLogin = async (e) => {
    
     try {
-      await firebase.auth().signInWithEmailAndPassword(email, password);
+      // await firebase.auth().signInWithEmailAndPassword(email, password);
       // Redirect or perform other actions on successful login
     } catch (error) {
       setError(error.message);
