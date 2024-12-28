@@ -1,4 +1,5 @@
-import RoomProvider from "./context/roomContext";
+import { AuthProvider } from "@/context/authContext";
+import RoomProvider from "@/context/roomContext";
 
 export const metadata = {
     title: "Create Next App",
@@ -9,7 +10,9 @@ export default function RootLayout({ children }) {
     return (
         <html lang="en">
             <body>
-                <RoomProvider>{children}</RoomProvider>
+                <AuthProvider>
+                    <RoomProvider>{children}</RoomProvider>
+                </AuthProvider>
             </body>
         </html>
     );

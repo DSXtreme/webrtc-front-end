@@ -6,10 +6,10 @@ import {
     useRef,
     useState,
 } from "react";
-import { RoomContext } from "./context/roomContext";
+import { RoomContext } from "@/context/roomContext";
 import Peer from "peerjs";
 import { v4 as uuid4 } from "uuid";
-import VideoPlayer from "./components/VideoPlayer";
+import VideoPlayer from "@/components/VideoPlayer";
 
 export default function Home() {
     const { io } = useContext(RoomContext);
@@ -55,7 +55,6 @@ export default function Home() {
         setInputRoomId(value);
     };
 
-    useEffect(() => {}, []);
 
     /**
      * Listening to
@@ -71,7 +70,6 @@ export default function Home() {
             console.log("data from room created: ", data);
             setRoomId(data.roomId);
         });
-
     
 
         // For any error at socket
@@ -91,12 +89,9 @@ export default function Home() {
 
     /**
      *  Handeling audio and video stream
-     *  handeling new user joined in the room
-     *  Sending the stream to other users in the room
      */
     useEffect(() => {
         (async () => {
-            // getting the stream form local machine
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: true,
@@ -104,42 +99,16 @@ export default function Home() {
                 });
 
                 setLocalStream(stream);
-                // videoRef.current.srcObject = stream;
-
-                //calling user who have joined and passing the stream
-                // io.on("user-joined", ({ peerId }) => {
-                //     console.log("localPeer", localPeer);
-
-                //     if (localPeer) {
-                //         const call = localPeer.call(peerId, stream);
-
-                //         // While getting remote user stream assign to remote video
-                //         call.on("stream", (peerStream) => {
-                //             console.log("call peer call: ", { peerStream });
-                //             remoteVideoRef.current.srcObject = peerStream;
-                //         });
-                //     }
-                // });
-
-                // // answer the call
-                // if (localPeer) {
-                //     localPeer.on("call", (call) => {
-                //         call.answer(stream);
-                //         call.on("stream", (peerStream) => {
-                //             console.log("answer peer strema: ", { peerStream });
-                //             remoteVideoRef.current.srcObject = peerStream;
-                //         });
-                //     });
-                // }
+               
             } catch (e) {
                 console.log("error at getting media: ", e);
             }
         })();
     }, [localPeer]);
 
+
     // handeling calls
     useEffect(() => {
-        console.log("localStream useEffect: ", localStream);
         //calling user who have joined and passing the stream
         if (localStream) {
             try {
@@ -147,11 +116,7 @@ export default function Home() {
                     console.log("remote join user", peerId);
 
                     if (localPeer) {
-                        console.log(
-                            "localStream inside socket user-joined",
-                            localStream
-                        );
-                        console.log("peerId user-joined", peerId);
+                       
                         const call = localPeer.call(peerId, localStream);
 
                         // While getting remote user stream assign to remote video
@@ -170,6 +135,7 @@ export default function Home() {
             }
         }
 
+        
         if (localPeer) {
             try {
                 localPeer.on("call", (call) => {
@@ -187,6 +153,17 @@ export default function Home() {
                 console.log("error at answering: ", e);
             }
         }
+
+        io.on("user-disconnected", ({ peerId }) => {
+            console.log("user disconnected", peerId);
+            setRemoteMembers((prevState) => {
+                const newState = { ...prevState };
+                delete newState[peerId];
+                return newState;
+            });
+        });
+
+
     }, [localPeer, localStream]);
 
     return (
