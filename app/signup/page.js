@@ -1,7 +1,7 @@
 "use client"
 import React, { useState } from 'react';
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from '../lib/firebase';
+import { auth } from "@/lib/firebase";
 
 
 const LoginPage = () => {
