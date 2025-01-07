@@ -4,19 +4,20 @@ import { RoomContext } from "@/context/roomContext";
 import Peer from "peerjs";
 import { v4 as uuid4 } from "uuid";
 import VideoPlayer from "@/components/VideoPlayer";
-import { metadata } from "./layout";
 
 export default function Home() {
     const { io } = useContext(RoomContext);
     const [roomId, setRoomId] = useState(null);
 
     const [localPeer, setLocalPeer] = useState(null);
-
     const [localScreenSharePeer, setLocalScreenSharePeer] = useState(null);
 
     const [inputRoomId, setInputRoomId] = useState(null);
+
     const [remoteMembers, setRemoteMembers] = useState({});
+
     const [localStream, setLocalStream] = useState(null);
+    const [localScreenShareStream, setLocalScreenShareStream] = useState(null);
 
     const handelJoin = ({ roomId }) => {
         if (localPeer) {
@@ -50,16 +51,21 @@ export default function Home() {
             console.log("error at socket:", error);
         });
 
+        io.on("screen-share-stoped-by-peer", ({peerId}) => {
+            console.log("screebn share stoped by peer", peerId);
+            setRemoteMembers((prevState) => {
+                const newState = { ...prevState };
+                delete newState[peerId];
+                return newState;
+            });
+        })
+
         // replace this firebase uid
         const myId = uuid4();
         const peer = new Peer(myId);
 
         // Setting up the local peer
         setLocalPeer(peer);
-
-        // setting up the screen share peer
-        const screenSharePeer = new Peer(`${myId}-screen-share`);
-        setLocalScreenSharePeer(screenSharePeer);
     }, []);
 
     useEffect(() => {
@@ -79,22 +85,24 @@ export default function Home() {
 
     // Handle screen share
     const startScreenShare = async () => {
+
+        const myId = uuid4();
+
+        // setting up the screen share peer
+        const screenSharePeer = new Peer(`${myId}-screen-share`);
+        setLocalScreenSharePeer(screenSharePeer);
+
+        console.log("start screen share");
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
         });
 
-        
+        setLocalScreenShareStream(screenStream);
 
         // Share screen with all the remote members
         Object.keys(remoteMembers).forEach((peerId) => {
             try {
-                const call = localScreenSharePeer.call(peerId, screenStream);
-                call.on("error", (err) => {
-                    console.error(
-                        `Error during screen share call with ${peerId}:`,
-                        err
-                    );
-                });
+                const call = screenSharePeer.call(peerId, screenStream);
             } catch (err) {
                 console.error(
                     `Failed to call ${peerId} for screen sharing:`,
@@ -104,14 +112,30 @@ export default function Home() {
         });
     };
 
+    const stopScreenShare = () => {
+
+        localScreenShareStream.getTracks().forEach((track) => track.stop());
+
+        console.log("localScreenShareStream", localScreenShareStream);
+
+        // Share screen with all the remote members
+        io.emit("screen-share-stoped", {
+            roomId,
+            peerId: localScreenSharePeer._id,
+        });
+
+        localScreenSharePeer.destroy();
+    };
+
     useEffect(() => {
         if (localStream) {
             io.on("user-joined", ({ peerId }) => {
                 if (localPeer) {
-                    const call = localPeer.call(
-                        peerId, 
-                        localStream,
-                    );
+                    const call = localPeer.call(peerId, localStream, {
+                        metadata: {
+                            streamType: "video",
+                        },
+                    });
                     call.on("stream", (peerStream) => {
                         setRemoteMembers((prevState) => ({
                             ...prevState,
@@ -125,6 +149,9 @@ export default function Home() {
         if (localPeer) {
             localPeer.on("call", (call) => {
                 call.answer(localStream);
+                console.log("call answered type:", call);
+
+                // to do add type of stream in different array with its peer and render it accordingly
 
                 call.on("stream", (peerStream) => {
                     setRemoteMembers((prevState) => ({
@@ -153,7 +180,8 @@ export default function Home() {
             />
             <button onClick={hadelCreateRoom}>Create Room</button>
             <button onClick={() => handelJoin({ roomId })}>Join Room</button>
-            <button onClick={startScreenShare}>Share Screen</button>
+            <button onClick={() => startScreenShare()}>Share Screen</button>
+            <button onClick={() => stopScreenShare()}>stop Screen</button>
 
             {/* Video interface */}
             {localStream && <VideoPlayer stream={localStream} muted />}
