@@ -5,7 +5,11 @@ import Peer from "peerjs";
 import { v4 as uuid4 } from "uuid";
 import VideoPlayer from "@/components/VideoPlayer";
 
+import useSpeachToText from "@/customHooks/useSpeachToText";
+
 export default function Home() {
+
+
     const { io } = useContext(RoomContext);
     const [roomId, setRoomId] = useState(null);
 
@@ -18,6 +22,8 @@ export default function Home() {
 
     const [localStream, setLocalStream] = useState(null);
     const [localScreenShareStream, setLocalScreenShareStream] = useState(null);
+
+    const { text, isListening, transcribeStartListen, transcribeStopListen } = useSpeachToText();
 
     const handelJoin = ({ roomId }) => {
         if (localPeer) {
@@ -43,6 +49,9 @@ export default function Home() {
     };
 
     useEffect(() => {
+
+        transcribeStartListen()
+
         io.on("room-cretaed", (data) => {
             setRoomId(data.roomId);
         });
@@ -68,7 +77,12 @@ export default function Home() {
         setLocalPeer(peer);
     }, []);
 
+
+    
+    // cretaeing new stream of audio and video for the user
     useEffect(() => {
+
+         
         (async () => {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -81,6 +95,10 @@ export default function Home() {
                 console.log("error at getting media: ", e);
             }
         })();
+
+        return () => {
+            // transcribeStopListen()
+        }
     }, [localPeer]);
 
     // Handle screen share
@@ -128,6 +146,9 @@ export default function Home() {
     };
 
     useEffect(() => {
+
+        
+
         if (localStream) {
             io.on("user-joined", ({ peerId }) => {
                 if (localPeer) {
@@ -171,7 +192,13 @@ export default function Home() {
         });
     }, [localPeer, localStream]);
 
+    const fuck = () => {
+        
+    }
+
     return (
+
+        console.log("text", text),
         <>
             <div>roomID {roomId}</div>
             <input
@@ -182,6 +209,7 @@ export default function Home() {
             <button onClick={() => handelJoin({ roomId })}>Join Room</button>
             <button onClick={() => startScreenShare()}>Share Screen</button>
             <button onClick={() => stopScreenShare()}>stop Screen</button>
+            <button onClick={() => fuck()}>liste</button>
 
             {/* Video interface */}
             {localStream && <VideoPlayer stream={localStream} muted />}
