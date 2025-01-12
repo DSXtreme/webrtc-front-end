@@ -1,8 +1,5 @@
 const { useEffect, useState } = require("react");
 
-const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
 let recognition;
 
 const useSpeachToText = () => {
@@ -10,6 +7,8 @@ const useSpeachToText = () => {
     const [isListening, setIsListening] = useState(false);
 
     useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.continuous = true;
